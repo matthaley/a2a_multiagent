@@ -150,7 +150,7 @@ def create_access_token(client_id, scopes, user_sub=None, tenant_id=None):
             "sub": user_sub if user_sub else client_id,
             "exp": (
                 datetime.now(timezone.utc).timestamp()
-                + timedelta(hours=1).total_seconds()
+                + timedelta(seconds=10).total_seconds()
             ),
             "iat": datetime.now(timezone.utc).timestamp(),
             "scope": " ".join(scopes),
@@ -160,6 +160,27 @@ def create_access_token(client_id, scopes, user_sub=None, tenant_id=None):
         return generate_jwt(payload, PRIVATE_KEY)
     else:
         return os.urandom(32).hex()
+
+
+def create_refresh_token(client_id, user_sub=None, tenant_id=None):
+    if GENERATE_JWT:
+        payload = {
+            "iss": "http://localhost:5000",
+            "aud": "http://localhost:8081",
+            "sub": user_sub if user_sub else client_id,
+            "exp": (
+                datetime.now(timezone.utc).timestamp()
+                + timedelta(days=7).total_seconds()
+            ),
+            "iat": datetime.now(timezone.utc).timestamp(),
+            "scope": "offline_access",
+        }
+        if tenant_id:
+            payload["tenant_id"] = tenant_id
+        return generate_jwt(payload, PRIVATE_KEY)
+    else:
+        return os.urandom(32).hex()
+
 
 def create_id_token(client_id, user_data, scopes, nonce=None):
     if not GENERATE_JWT:
@@ -462,16 +483,65 @@ def generate_token():
             client_id, auth_code_data["scopes"], user["sub"], user["tenant_id"]
         )
         id_token = create_id_token(client_id, user, auth_code_data["scopes"])
+        refresh_token = create_refresh_token(
+            client_id, user["sub"], user["tenant_id"]
+        )
 
         return jsonify(
             {
                 "access_token": access_token,
                 "id_token": id_token,
                 "token_type": "Bearer",
-                "expires_in": 3600,
+                "expires_in": 10,
                 "scope": " ".join(auth_code_data["scopes"]),
+                "refresh_token": refresh_token,
             }
         )
+
+    elif grant_type == "refresh_token":
+        refresh_token = request.form.get("refresh_token")
+        if not refresh_token:
+            return (
+                jsonify(
+                    {
+                        "error": "invalid_request",
+                        "error_description": "Refresh token not provided.",
+                    }
+                ),
+                400,
+            )
+        try:
+            decoded_token = jwt.decode(
+                refresh_token,
+                algorithms=["RS256"],
+                options={"verify_signature": False},
+            )
+            # In a real app, you'd validate the signature against the public key
+            # and check for expiration, etc.
+            # For this demo, we'll just extract the user info and issue a new token.
+            user_sub = decoded_token.get("sub")
+            tenant_id = decoded_token.get("tenant_id")
+            scopes = client.get(
+                "allowed_scopes"
+            )  # Or derive from original request
+            access_token = create_access_token(
+                client_id, scopes, user_sub, tenant_id
+            )
+            return jsonify(
+                {
+                    "access_token": access_token,
+                    "token_type": "Bearer",
+                    "expires_in": 10,
+                    "scope": " ".join(scopes),
+                }
+            )
+        except jwt.InvalidTokenError as e:
+            return (
+                jsonify(
+                    {"error": "invalid_grant", "error_description": f"Invalid refresh token: {e}"}
+                ),
+                400,
+            )
     logging.error("Unsupported_grant_type")
     return jsonify({"error": "unsupported_grant_type"}), 400
 

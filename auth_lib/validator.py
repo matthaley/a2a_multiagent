@@ -85,7 +85,7 @@ def is_token_valid(token: str, required_tenant_id: str = None):
         decoded_token = jwt.decode(
             token,
             key=public_key,
-            issuer="http://localhost:5000",
+            issuer=oidc_config.get("issuer"),
             audience="http://localhost:8081",
             algorithms=[header["alg"]],
             options={"verify_exp": True, "verify_aud": True, "verify_iss": True},

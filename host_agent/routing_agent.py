@@ -7,7 +7,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS-IS" BASIS,
+# distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
@@ -39,12 +39,14 @@ from a2a.types import (
     Task,
     TaskState,
     TaskStatus,
+    JSONRPCErrorResponse,
 )
 from dotenv import load_dotenv
 from google.adk import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
+from google.adk.sessions import DatabaseSessionService
 
 from .persistent_task_store import PersistentTaskStore
 from .remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
@@ -76,6 +78,10 @@ class RoutingAgent:
     def __init__(
         self,
         task_store: PersistentTaskStore,
+        session_service: DatabaseSessionService,
+        app_name: str,
+        user_id: str,
+        session_id: str,
         task_callback: TaskUpdateCallback | None = None,
     ):
         """
@@ -83,6 +89,10 @@ class RoutingAgent:
 
         Args:
             task_store: An instance of PersistentTaskStore for managing task state.
+            session_service: The session service for updating session state.
+            app_name: The name of the application.
+            user_id: The ID of the user.
+            session_id: The ID of the session.
             task_callback: An optional callback for handling task updates.
         """
         self.task_callback = task_callback
@@ -91,6 +101,10 @@ class RoutingAgent:
         self.agents_for_prompt: str = ""
         self.tenant_id: str | None = None
         self.task_store = task_store
+        self.session_service = session_service
+        self.app_name = app_name
+        self.user_id = user_id
+        self.session_id = session_id
 
     async def _async_init_components(
         self,
@@ -128,6 +142,10 @@ class RoutingAgent:
     async def create(
         cls,
         task_store: PersistentTaskStore,
+        session_service: DatabaseSessionService,
+        app_name: str,
+        user_id: str,
+        session_id: str,
         agent_cards: list[ExtendedAgentCard] | None = None,
         task_callback: TaskUpdateCallback | None = None,
         tenant_id: str | None = None,
@@ -137,6 +155,10 @@ class RoutingAgent:
 
         Args:
             task_store: The task store for state management.
+            session_service: The session service for updating session state.
+            app_name: The name of the application.
+            user_id: The ID of the user.
+            session_id: The ID of the session.
             agent_cards: A list of discovered agent cards.
             task_callback: An optional callback for task updates.
             tenant_id: The tenant ID for this agent instance.
@@ -144,7 +166,14 @@ class RoutingAgent:
         Returns:
             A fully initialized RoutingAgent instance.
         """
-        instance = cls(task_store, task_callback)
+        instance = cls(
+            task_store,
+            session_service,
+            app_name,
+            user_id,
+            session_id,
+            task_callback,
+        )
         instance.tenant_id = tenant_id
         await instance._async_init_components(agent_cards=agent_cards)
         return instance
@@ -189,8 +218,8 @@ class RoutingAgent:
         ### Constraints
         - **DO NOT** respond to the user, engage in conversation, or ask clarifying questions unless it is the direct result of a tool output.
         - **DO NOT** attempt to answer the user's request yourself.
-        - You **MUST** call the appropriate tool (`send_message` or `list_available_agents`). No other action is permitted.
-        - You **MUST NOT** wrap the tool call in a `print()` statement.
+        - **You MUST** call the appropriate tool (`send_message` or `list_available_agents`). No other action is permitted.
+        - **You MUST NOT** wrap the tool call in a `print()` statement.
 
         ### Instructions
         1.  **If the user asks about your capabilities (e.g., "what can you do?", "what agents do you have?"), you MUST use the `list_available_agents` tool.**
@@ -270,7 +299,7 @@ class RoutingAgent:
             "response_type": "code",
             "client_id": agent_name,
             "redirect_uri": redirect_uri,
-            "scope": "openid profile email api:read",
+            "scope": "openid profile email api:read offline_access",
             "state": json.dumps(state_data),
         }
         authorization_url = f"{auth_uri}?{urlencode(params)}"
@@ -323,34 +352,70 @@ class RoutingAgent:
                     return card
         return None
 
+    async def _refresh_access_token(
+        self, refresh_token: str, agent_name: str, client_secret: str
+    ) -> str | None:
+        """
+        Refreshes an expired access token using a refresh token.
+
+        Args:
+            refresh_token: The refresh token from the session.
+            agent_name: The name of the agent (client) for which to refresh the token.
+            client_secret: The client secret for the agent.
+
+        Returns:
+            The new access token, or None if refresh fails.
+        """
+        logging.info(f"Attempting to refresh access token for {agent_name}")
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                "http://localhost:5000/generate-token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": refresh_token,
+                    "client_id": agent_name,
+                    "client_secret": client_secret,
+                },
+            )
+
+        if token_response.status_code != 200:
+            logging.error(
+                f"Failed to refresh token: {token_response.text} (Status: {token_response.status_code})"
+            )
+            return None
+
+        token_data = token_response.json()
+        new_access_token = token_data.get("access_token")
+
+        # Update the session with the new token
+        session = await self.session_service.get_session(
+            app_name=self.app_name, user_id=self.user_id, session_id=self.session_id
+        )
+        from google.adk.events.event import Event
+        from google.adk.events.event_actions import EventActions
+
+        auth_event = Event(
+            id=str(uuid.uuid4()),
+            invocation_id=str(uuid.uuid4()),
+            author="system",
+            actions=EventActions(state_delta={"access_token": new_access_token}),
+        )
+        await self.session_service.append_event(session, auth_event)
+        logging.info("Successfully refreshed and updated access token.")
+        return new_access_token
+
     async def send_message(
         self, agent_type: str, task: str, tool_context: ToolContext
     ) -> str:
         """
         Sends a task to a remote agent, handling discovery, security, and lifecycle.
-
-        This is the primary tool used by the LLM to delegate work. It follows these steps:
-        1. Finds the correct agent card based on type and tenant.
-        2. Creates and persists a local task to track the operation.
-        3. Checks for security requirements and initiates OAuth if necessary.
-        4. Sends the message to the remote agent according to the A2A spec.
-        5. Processes the response and links the remote task ID to the local task.
-
-        Args:
-            agent_type: The type of agent to send the task to (e.g., "weather").
-            task: The comprehensive task description for the agent.
-            tool_context: The context provided by the ADK, containing session state.
-
-        Returns:
-            A string containing the resulting Task object (as JSON), a redirect
-            dictionary for OAuth (as JSON), or an error message.
+        Includes logic to refresh the access token if it has expired.
         """
         logging.info(f"Attempting to send task to agent of type: {agent_type}")
         logging.info(f"Task content: {task}")
 
         state = tool_context.state
 
-        # 1. Find the correct agent card based on type and tenant.
         found_card = self._find_agent_card_by_type(agent_type, state)
         if not found_card:
             return f"I'm sorry, I can't find an agent with the type '{agent_type}'. Please choose from the available agent types."
@@ -358,8 +423,6 @@ class RoutingAgent:
         agent_name = found_card.name
         logging.info(f"Found matching agent '{agent_name}' for agent type '{agent_type}'")
 
-        # 2. Create and persist a local task to track this operation. This is crucial
-        # for managing state across asynchronous operations like OAuth.
         task_id = str(uuid.uuid4())
         context_id = state.get("context_id") or str(uuid.uuid4())
         state["context_id"] = context_id
@@ -376,8 +439,6 @@ class RoutingAgent:
         )
         await self.task_store.save(new_task)
 
-        # 3. Check for security requirements. If the agent is secure and there's
-        # no access token in the session, initiate the OAuth flow.
         access_token = state.get("access_token")
         if found_card.security and not access_token:
             logging.info(f"Agent '{agent_name}' requires authentication. Initiating OAuth flow.")
@@ -386,15 +447,11 @@ class RoutingAgent:
             )
             return json.dumps(oauth_response)
 
-        # 4. Get the connection for the target agent.
         state["active_agent"] = agent_name
         remote_connection = self.remote_agent_connections.get(agent_name)
         if not remote_connection:
             return f"Error: Client not available for {agent_name}"
 
-        # 5. Prepare and send the message according to the A2A specification.
-        # For new tasks, the `taskId` is omitted from the message, signaling the
-        # remote agent that it needs to create a new task.
         message = Message(
             role="user",
             parts=[Part(type="text", text=task)],
@@ -406,24 +463,56 @@ class RoutingAgent:
             params=MessageSendParams(message=message),
         )
 
-        headers = {}
-        if access_token:
-            headers["Authorization"] = f"Bearer {access_token}"
+        for attempt in range(2):  # Allow one retry for token refresh
+            headers = {}
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
 
-        logging.info(
-            f"--- Sending Payload to {agent_name} ---\n{message_request.model_dump_json(indent=2, exclude_none=True)}"
-        )
+            logging.info(
+                f"--- Sending Payload to {agent_name} (Attempt {attempt + 1}) ---\n{message_request.model_dump_json(indent=2, exclude_none=True)}"
+            )
 
-        send_response: SendMessageResponse = await remote_connection.send_message(
-            message_request=message_request, headers=headers
-        )
-        logging.info(
-            f"--- Received Send Response from {agent_name} ---\n{send_response.model_dump_json(indent=2, exclude_none=True)}"
-        )
+            send_response: SendMessageResponse = await remote_connection.send_message(
+                message_request=message_request, headers=headers
+            )
+            logging.info(
+                f"--- Received Send Response from {agent_name} ---\n{send_response.model_dump_json(indent=2, exclude_none=True)}"
+            )
 
-        # 6. Process the response. Per the A2A spec, the response to a task-creating
-        # message is a Task object. We extract the ID of this remote task and
-        # link it to our local task record.
+            if (
+                isinstance(send_response.root, JSONRPCErrorResponse)
+                and "token has expired" in send_response.root.error.message.lower()
+            ):
+                logging.warning("Access token has expired. Attempting to refresh.")
+                refresh_token = state.get("refresh_token")
+                if not refresh_token:
+                    return "Access token expired, and no refresh token is available. Please re-authenticate."
+
+                # This is a temporary solution for the demo to get the client secret.
+                # In a real application, this should be handled more securely.
+                client_secrets = {
+                    "Horizon Agent - Tenant ABC": "horizon_secret_abc",
+                    "Weather Agent": "weather_secret",
+                    "Calendar Agent": "calendar_secret",
+                    "Airbnb Agent": "airbnb_secret",
+                }
+                client_secret = client_secrets.get(agent_name)
+                if not client_secret:
+                    return f"Error: Client secret not found for {agent_name}."
+
+                new_access_token = await self._refresh_access_token(
+                    refresh_token, agent_name, client_secret
+                )
+                if new_access_token:
+                    access_token = new_access_token  # Update token for the retry
+                    state["access_token"] = new_access_token # also update state for next calls
+                    continue  # Retry the request
+                else:
+                    return "Failed to refresh access token. Please re-authenticate."
+            else:
+                # If the response is not a token error, break the loop and process it.
+                break
+
         if not isinstance(
             send_response.root, SendMessageSuccessResponse
         ) or not isinstance(send_response.root.result, Task):
@@ -446,16 +535,14 @@ class RoutingAgent:
 
 async def get_initialized_routing_agent_async(
     tenant_id: str | None = None,
+    session_service: DatabaseSessionService | None = None,
+    app_name: str | None = None,
+    user_id: str | None = None,
+    session_id: str | None = None,
 ) -> Agent:
     """
     Asynchronously creates and initializes the RoutingAgent for a specific tenant
     by fetching available agent cards from the agent registry service.
-
-    Args:
-        tenant_id: The ID of the tenant for which to initialize the agent.
-
-    Returns:
-        A fully configured and initialized ADK Agent, or None if initialization fails.
     """
     # Fetch agent cards from the demo agent registry service.
     async with httpx.AsyncClient() as client:
@@ -473,6 +560,12 @@ async def get_initialized_routing_agent_async(
     task_store = PersistentTaskStore(db_path="host_agent.db")
 
     routing_agent_instance = await RoutingAgent.create(
-        task_store=task_store, agent_cards=agent_cards, tenant_id=tenant_id
+        task_store=task_store,
+        session_service=session_service,
+        app_name=app_name,
+        user_id=user_id,
+        session_id=session_id,
+        agent_cards=agent_cards,
+        tenant_id=tenant_id,
     )
     return routing_agent_instance.create_agent()
