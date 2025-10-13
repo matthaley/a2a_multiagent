@@ -69,6 +69,7 @@ async def handle_callback(request: Request):
 
     token_data = token_response.json()
     access_token = token_data.get("access_token")
+    refresh_token = token_data.get("refresh_token")
 
     # Store the access token in the session state via an event
     session = await SESSION_SERVICE.get_session(
@@ -78,7 +79,12 @@ async def handle_callback(request: Request):
         id=str(uuid.uuid4()),
         invocation_id=str(uuid.uuid4()),
         author="system",
-        actions=EventActions(state_delta={"access_token": access_token}),
+        actions=EventActions(
+            state_delta={
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
+        ),
     )
     await SESSION_SERVICE.append_event(session, auth_event)
 
@@ -107,7 +113,11 @@ async def get_response_from_agent(
     """Get response from host agent."""
     try:
         tenant_agent = await routing_agent.get_initialized_routing_agent_async(
-            tenant_id=GLOBAL_TENANT_ID
+            tenant_id=GLOBAL_TENANT_ID,
+            session_service=SESSION_SERVICE,
+            app_name=APP_NAME,
+            user_id=USER_ID,
+            session_id=SESSION_ID,
         )
         tenant_runner = Runner(
             agent=tenant_agent,

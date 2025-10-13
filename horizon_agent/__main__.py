@@ -32,7 +32,7 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from .adk_agent_executor import ADKAgentExecutor
+from .adk_agent_executor import HorizonAgentExecutor
 from .horizon_agent import root_agent
 
 load_dotenv()
@@ -106,7 +106,7 @@ def main():
         session_service=InMemorySessionService(),
         memory_service=InMemoryMemoryService(),
     )
-    agent_executor = ADKAgentExecutor(runner, agent_card, args.tenant_id)
+    agent_executor = HorizonAgentExecutor(runner, agent_card, args.tenant_id)
 
     request_handler = DefaultRequestHandler(
         agent_executor=agent_executor, task_store=InMemoryTaskStore()
