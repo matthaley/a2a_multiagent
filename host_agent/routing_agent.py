@@ -161,7 +161,7 @@ class RoutingAgent:
             model="gemini-2.5-pro",
             name="Routing_agent",
             instruction=self.root_instruction,
-            tools=[self.send_message, self.list_available_agents],
+            tools=[self.send_message, self.list_available_agents, self.get_task_status],
             description="This Routing agent orchestrates user requests by delegating them to specialized downstream agents.",
         )
 
@@ -199,6 +199,7 @@ class RoutingAgent:
         4.  Call `send_message` with two parameters:
             -   `agent_type`: The type you identified (e.g., "weather", "horizon").
             -   `task`: The user's original, unmodified request.
+        5.  After calling `send_message`, the tool will return a confirmation message with a task ID. You MUST output this message to the user.
 
         ### Available Agents (for routing)
         {self.agents_for_prompt}
@@ -241,6 +242,37 @@ class RoutingAgent:
         for card in self.cards.values():
             summary += f"- **{card.name}:** {card.description}\n"
         return summary
+
+    async def get_task_status(self, task_id: str) -> str:
+        """
+        Retrieves the status of a task.
+
+        Args:
+            task_id: The ID of the task to retrieve.
+
+        Returns:
+            A string containing the status of the task.
+        """
+        task = await self.task_store.get(task_id)
+        if not task:
+            return f"Task with ID {task_id} not found."
+
+        if not task.remote_task_id:
+            return f"Task {task_id} is in status: {task.status.state.value}."
+
+        agent_name = task.request.context.get("active_agent")
+        if not agent_name:
+            return f"Could not determine the agent for task {task_id}."
+
+        remote_connection = self.remote_agent_connections.get(agent_name)
+        if not remote_connection:
+            return f"Error: Client not available for {agent_name}"
+
+        remote_task = await remote_connection.get_task(task.remote_task_id)
+        if not remote_task:
+            return f"Could not retrieve status for remote task {task.remote_task_id}."
+
+        return f"Task {task_id} is in status: {remote_task.status.state.value}."
 
     async def initiate_oauth_flow(
         self,
@@ -323,6 +355,42 @@ class RoutingAgent:
                     return card
         return None
 
+    async def _send_message_and_process_response(
+        self,
+        agent_name: str,
+        message_request: SendMessageRequest,
+        headers: dict,
+        task_id: str,
+    ):
+        remote_connection = self.remote_agent_connections.get(agent_name)
+        if not remote_connection:
+            logging.error(f"Error: Client not available for {agent_name}")
+            return
+
+        send_response: SendMessageResponse = await remote_connection.send_message(
+            message_request=message_request, headers=headers
+        )
+        logging.info(
+            f"--- Received Send Response from {agent_name} ---\n{send_response.model_dump_json(indent=2, exclude_none=True)}"
+        )
+
+        if not isinstance(
+            send_response.root, SendMessageSuccessResponse
+        ) or not isinstance(send_response.root.result, Task):
+            logging.error("Received a non-successful or non-task response.")
+            await self.task_store.task_failed(
+                task_id,
+                Message(
+                    messageId=str(uuid.uuid4()),
+                    role="agent",
+                    parts=[Part(type="text", text="Failed to send message")],
+                ),
+            )
+            return
+
+        remote_task = send_response.root.result
+        await self.task_store.set_remote_task_id(task_id, remote_task.id)
+
     async def send_message(
         self, agent_type: str, task: str, tool_context: ToolContext
     ) -> str:
@@ -333,8 +401,8 @@ class RoutingAgent:
         1. Finds the correct agent card based on type and tenant.
         2. Creates and persists a local task to track the operation.
         3. Checks for security requirements and initiates OAuth if necessary.
-        4. Sends the message to the remote agent according to the A2A spec.
-        5. Processes the response and links the remote task ID to the local task.
+        4. Starts a background task to send the message to the remote agent.
+        5. Immediately returns a confirmation message with the local task ID.
 
         Args:
             agent_type: The type of agent to send the task to (e.g., "weather").
@@ -342,7 +410,7 @@ class RoutingAgent:
             tool_context: The context provided by the ADK, containing session state.
 
         Returns:
-            A string containing the resulting Task object (as JSON), a redirect
+            A string containing a confirmation message with the task ID, a redirect
             dictionary for OAuth (as JSON), or an error message.
         """
         logging.info(f"Attempting to send task to agent of type: {agent_type}")
@@ -358,8 +426,7 @@ class RoutingAgent:
         agent_name = found_card.name
         logging.info(f"Found matching agent '{agent_name}' for agent type '{agent_type}'")
 
-        # 2. Create and persist a local task to track this operation. This is crucial
-        # for managing state across asynchronous operations like OAuth.
+        # 2. Create and persist a local task to track this operation.
         task_id = str(uuid.uuid4())
         context_id = state.get("context_id") or str(uuid.uuid4())
         state["context_id"] = context_id
@@ -376,8 +443,7 @@ class RoutingAgent:
         )
         await self.task_store.save(new_task)
 
-        # 3. Check for security requirements. If the agent is secure and there's
-        # no access token in the session, initiate the OAuth flow.
+        # 3. Check for security requirements.
         access_token = state.get("access_token")
         if found_card.security and not access_token:
             logging.info(f"Agent '{agent_name}' requires authentication. Initiating OAuth flow.")
@@ -386,15 +452,8 @@ class RoutingAgent:
             )
             return json.dumps(oauth_response)
 
-        # 4. Get the connection for the target agent.
+        # 4. Prepare the message and headers.
         state["active_agent"] = agent_name
-        remote_connection = self.remote_agent_connections.get(agent_name)
-        if not remote_connection:
-            return f"Error: Client not available for {agent_name}"
-
-        # 5. Prepare and send the message according to the A2A specification.
-        # For new tasks, the `taskId` is omitted from the message, signaling the
-        # remote agent that it needs to create a new task.
         message = Message(
             role="user",
             parts=[Part(type="text", text=task)],
@@ -405,43 +464,20 @@ class RoutingAgent:
             id=str(uuid.uuid4()),
             params=MessageSendParams(message=message),
         )
-
         headers = {}
         if access_token:
             headers["Authorization"] = f"Bearer {access_token}"
 
-        logging.info(
-            f"--- Sending Payload to {agent_name} ---\n{message_request.model_dump_json(indent=2, exclude_none=True)}"
-        )
-
-        send_response: SendMessageResponse = await remote_connection.send_message(
-            message_request=message_request, headers=headers
-        )
-        logging.info(
-            f"--- Received Send Response from {agent_name} ---\n{send_response.model_dump_json(indent=2, exclude_none=True)}"
-        )
-
-        # 6. Process the response. Per the A2A spec, the response to a task-creating
-        # message is a Task object. We extract the ID of this remote task and
-        # link it to our local task record.
-        if not isinstance(
-            send_response.root, SendMessageSuccessResponse
-        ) or not isinstance(send_response.root.result, Task):
-            logging.error("Received a non-successful or non-task response.")
-            await self.task_store.task_failed(
-                task_id,
-                Message(
-                    messageId=str(uuid.uuid4()),
-                    role="agent",
-                    parts=[Part(type="text", text="Failed to send message")],
-                ),
+        # 5. Start a background task to send the message and process the response.
+        asyncio.create_task(
+            self._send_message_and_process_response(
+                agent_name, message_request, headers, task_id
             )
-            return ""
+        )
 
-        remote_task = send_response.root.result
-        await self.task_store.set_remote_task_id(task_id, remote_task.id)
+        # 6. Immediately return a confirmation to the user.
+        return f"I've started working on that for you. The task ID is {task_id}."
 
-        return remote_task.model_dump_json()
 
 
 async def get_initialized_routing_agent_async(

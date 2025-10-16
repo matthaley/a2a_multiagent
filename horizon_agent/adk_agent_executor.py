@@ -102,8 +102,7 @@ class HorizonAgentExecutor(AgentExecutor):
                 logger.debug(
                     'Yielding auth required response: %s', auth_details.uri
                 )
-                await task_updater.update_status(
-                    TaskState.auth_required,
+                await task_updater.requires_auth(
                     message=new_agent_text_message(
                         f'Authorization is required to continue. Visit {auth_details.uri}'
                     ),
