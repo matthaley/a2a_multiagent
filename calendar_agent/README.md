@@ -1,7 +1,11 @@
-# Calendar Agent
+# Calendar Agent: Your Scheduling Assistant
 
-This agent helps with checking a user's availability using their Google Calendar. It is a remote agent that can be used by other agents.
+Welcome to the Calendar Agent! This is a specialized agent that's part of our multi-agent trip planner.
 
-## Running the Agent
+## What It Does
 
-For instructions on how to run this agent as part of the complete demo, please see the main [README.md](../../README.md) file.
+The Calendar Agent's job is to connect to your Google Calendar and check your availability for your trip. When you ask the main Host Agent to check your calendar, it will delegate the task to this agent.
+
+## How to Run This Agent
+
+This agent is designed to be run as part of the complete multi-agent system. For full instructions on how to get everything up and running, please see the main [README.md](../../README.md) file in the project's root directory.

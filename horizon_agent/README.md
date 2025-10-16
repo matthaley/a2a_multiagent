@@ -1,13 +1,13 @@
-# Horizon Agent
+# Horizon Agent: Your Secure Order Specialist
 
-This agent is a sample tenant-specific service that provides information about orders.
+Welcome to the Horizon Agent! This is a specialized, secure agent that's part of our multi-agent trip planner.
 
-## Function
+## What It Does
 
-The Horizon Agent is designed to simulate a service that would be used by a specific tenant (e.g., a specific company or user). It has a single tool, `get_order_status`, which returns mock data for an order.
+The Horizon Agent's job is to provide information about orders. This agent is a sample of a "tenant-specific" service, meaning it's designed to handle data for a particular user or company.
 
-In the multi-tenant architecture, an instance of the Horizon Agent is run for a specific tenant. The `host_agent` is responsible for routing requests to the correct instance based on the `tenant_id`.
+Because it handles sensitive information, this agent is secure and requires you to log in before you can use it.
 
-## Running the Agent
+## How to Run This Agent
 
-For instructions on how to run this agent as part of the complete demo, please see the main [README.md](../../README.md) file.
+This agent is designed to be run as part of the complete multi-agent system. For full instructions on how to get everything up and running, please see the main [README.md](../../README.md) file in the project's root directory.

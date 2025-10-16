@@ -21,6 +21,9 @@ End-to-end security is provided by OAuth 2.0, with session state managed by a pe
 9.  The `send_message` tool, executing again, now finds the `access_token` in the session state.
 10. It adds the token to an `Authorization` header and successfully calls the `horizon_agent`.
 
+*   **Implementation Notes:**
+    *   The implementation should use the `TaskUpdater.requires_auth()` method to signal that authentication is required.
+
 ### 3.2. A2A Task Lifecycle for Asynchronous Operations
 
 The system uses a stateful, persistent task management flow to handle long-running asynchronous operations like user authentication.
@@ -30,12 +33,12 @@ The system uses a stateful, persistent task management flow to handle long-runni
 -   After the user completes the OAuth 2.0 flow, the `/callback` endpoint retrieves the original task, updates its status to `working`, and saves the user's access token to the persistent session.
 -   This robust, stateful mechanism allows the agent to seamlessly resume the user's original request without losing context.
 
-### 3.3. Task Delegation and Linking
+### 3.3. Asynchronous Task Delegation
 
-When the `host_agent` delegates a task to a downstream agent, it follows the A2A specification for task creation to ensure a robust, distributed system.
+To provide a responsive user experience, the system uses an asynchronous task delegation model. The `host_agent` does not wait for downstream agents to complete their work.
 
-1.  **Local Task Creation**: The `host_agent` first creates a `Task` in its own `PersistentTaskStore`. This task represents the user's original request to the host.
-2.  **Message without Task ID**: The `host_agent` sends a `message:send` request to the downstream agent. Crucially, this message **does not** contain a `taskId`.
-3.  **Remote Task Creation**: The downstream agent receives this request and, per the A2A specification, creates a *new* task in its own task store.
-4.  **Response with Task Object**: The downstream agent's immediate response to the `message:send` request is a `Task` object containing the `id` of the newly created remote task.
-5.  **Linking**: The `host_agent` receives this response, extracts the `remote_task_id`, and updates its original, local `Task` record with this new ID. This creates a durable link between the parent task in the host and the child task in the downstream agent.
+1.  **Local Task Creation**: The `host_agent` creates a `Task` in its own `PersistentTaskStore`.
+2.  **Asynchronous Hand-off**: The `host_agent` sends a `message:send` request to the downstream agent. It does **not** wait for the task to be completed.
+3.  **Immediate User Feedback**: The `host_agent` immediately responds to the user, confirming that the task has been started and providing the local `task_id`.
+4.  **Remote Task Creation & Linking**: The downstream agent creates its own task and returns the `remote_task_id` to the `host_agent`, which then links the two tasks in its database.
+5.  **Checking Status**: The user can ask for the status of a task at any time using the `task_id`. The `host_agent` will then query the downstream agent to get the latest status.

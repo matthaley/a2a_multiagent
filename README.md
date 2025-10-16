@@ -1,118 +1,107 @@
-# Multi-Agent Airbnb Planner
+# Welcome to the Multi-Agent Trip Planner!
 
-(No changes to intro sections)
+This project is a friendly and powerful trip-planning assistant that demonstrates how multiple AI agents can work together to help you plan your next vacation. Think of it as a team of specialists, each with a unique skill, all coordinated by a central "host" agent to make your life easier.
 
-## Current Status
+Whether you're a developer curious about multi-agent systems or just someone who wants to see how AI can simplify trip planning, you're in the right place!
 
-This project is a functional proof-of-concept demonstrating a secure, multi-tenant agent architecture.
+## What Can It Do?
 
--   **Primary Goal**: The end-to-end security flow is **working**. A user can successfully authenticate via OAuth 2.0 to access a secure, tenant-specific agent.
--   **Task Lifecycle**: The system now uses the A2A Task Lifecycle for seamless, stateful operations.
+Our trip planner is made up of a team of specialized agents:
 
-## Architecture
+*   **The Host Agent (Your Personal Concierge):** This is the agent you'll talk to directly. It understands your requests and knows exactly which specialist agent to ask for help.
+*   **The Airbnb Agent:** Helps you find the perfect place to stay.
+*   **The Calendar Agent:** Checks your Google Calendar to see if you're available for your trip.
+*   **The Weather Agent:** Gives you the weather forecast for your destination.
+*   **The Horizon Agent (for Order Status):** A special agent that can check the status of an order. This agent is secure and requires you to log in.
 
-The architecture consists of a central **Host Agent** that acts as an orchestrator and several downstream agents that perform specific tasks.
+## How It Works: A Look Under the Hood
 
--   **Host Agent**: The single entry point for users. It uses a Gemini model to understand user prompts and route them to the appropriate downstream agent. It also manages the security flow and persists session and task state to a local SQLite database.
--   **Downstream Agents**:
-    -   `airbnb_agent`: Searches for accommodations.
-    -   `calendar_agent`: Checks the user's Google Calendar.
-    -   `weather_agent`: Provides weather forecasts.
-    -   `horizon_agent`: A sample tenant-specific agent for retrieving order status. This agent is secure and requires an OAuth 2.0 token.
--   **Auth Lib**: A shared library for JWT validation, used by all secure downstream agents.
--   **IDP (Identity Provider)**: A mock OAuth 2.0 server that issues JWTs.
--   **Agent Registry**: A simple service that allows the Host Agent to discover available downstream agents.
+This project is more than just a trip planner; it's a demonstration of a secure and scalable multi-agent system. Here are some of the key concepts:
 
-## State Persistence
+*   **Teamwork:** The Host Agent acts as a team lead, delegating tasks to the right specialist agent. This is a common pattern in modern AI applications.
+*   **Security First:** We use industry-standard OAuth 2.0 to keep your information safe. When you need to access a secure agent (like the Horizon Agent), you'll be asked to log in through a mock "Identity Provider," just like you would with a real application.
+*   **Remembering Your Conversation:** The Host Agent saves the state of your conversation in a local database file (`host_agent.db`). This means that even if you need to step away to log in, the agent will remember what you were doing and can pick up right where you left off.
 
-The `host_agent` uses a `PersistentTaskStore` backed by a local SQLite database (`host_agent.db`) to maintain the state of all user interactions.
+## Getting Started: Let's Get It Running!
 
--   **Task Lifecycle Management**: When the `host_agent` delegates a task to a downstream agent, it first creates a record in its own database. It then updates this record with the `remote_task_id` provided by the downstream agent, effectively linking the parent and child tasks.
--   **Session Management**: The system also persists session data, including OAuth tokens, to the database. This ensures that if the `host_agent` is restarted, it can resume interactions without requiring the user to re-authenticate.
+Ready to try it out? Here’s how to get the multi-agent trip planner running on your local machine.
 
-## Getting Started
+### Step 1: Install the Necessary Tools
 
-(No changes to this section)
-
-## Security Architecture
-
-The security of the system is based on the OAuth 2.0 Authorization Code Grant flow. This ensures that a user's credentials are never exposed to the agents and that access to secure downstream agents is strictly controlled by short-lived access tokens.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Host Agent
-    participant IDP
-    participant Downstream Agent
-
-    User->>Host Agent: "what is the status of order 123"
-    Host Agent-->>User: "Please authenticate. [Follow this link]"
-    
-    User->>IDP: Clicks link, logs in, grants consent
-    IDP-->>Host Agent: Redirects to /callback with auth_code
-    
-    Host Agent->>IDP: Exchanges auth_code for access_token
-    IDP-->>Host Agent: Returns access_token
-    
-    Note over User, Host Agent: User signals to continue (e.g., "done")
-    
-    User->>Host Agent: "done"
-    Host Agent->>Downstream Agent: GET /orders/123 (with Bearer token)
-    Downstream Agent-->>Host Agent: Returns order status
-    Host Agent-->>User: "The status of order 123 is 'shipped'."
-```
-
-### How it Works
-### Step 1: Configure the Identity Provider (IDP)
-
-In a terminal, navigate to the `idp` directory and generate the necessary keys.
+First, you'll need to install all the project's dependencies. It's a good idea to do this in a virtual environment. Open your terminal and run this command from the project's root directory:
 
 ```bash
-(cd idp && python generate_jwks.py)
-```
-This will create a `private_key.pem` file for signing tokens and a `jwks.json` file for the public key within the `idp` directory.
-
-### Step 2: Start the Services
-
-To run the demo, you must start the mock IDP, the agent registry, and all agents in separate terminals. **Run each of these commands from the project root directory.**
-
-**Terminal 1: Start the IDP**
-```bash
-python -m idp.app
+pip install -e .
 ```
 
-**Terminal 2: Start the Agent Registry**
-```bash
-python -m demo_agent_registry.app
-```
+### Step 2: Set Up the "Identity Provider"
 
-**Terminal 3: Start the Weather Agent**
-```bash
-python -m weather_agent
-```
-...
-**Terminal 7: Start the Host Agent**
-```bash
-# For tenant 'tenant-abc'
-python -m host_agent --port 8083 --tenant-id tenant-abc
-```
+To simulate a real login experience, we need to set up a mock "Identity Provider." This requires generating a set of secure keys.
 
-## Interacting with the System
+1.  **Generate a Private Key:**
+    ```bash
+    ssh-keygen -t rsa -b 2048 -m PEM -f idp/idp_rsa -N ""
+    ```
 
-1.  Open a browser and navigate to the `host_agent`'s Gradio UI at **http://localhost:8083**.
-2.  To test the secure flow, enter a prompt for the Horizon agent, for example:
+2.  **Create a Public Key:**
+    ```bash
+    openssl rsa -in idp/idp_rsa -pubout -out idp/pubkey.pub
+    ```
+
+3.  **Generate the Final Key File:**
+    ```bash
+    (cd idp && python3 generate_jwks.py)
+    ```
+
+### Step 3: Start All the Services
+
+Now, it's time to bring our team of agents to life! You'll need to open **7 separate terminal windows**. In each one, you'll run one of the following commands from the project's root directory.
+
+*   **Terminal 1: Start the Identity Provider**
+    ```bash
+    python -m idp.app
+    ```
+
+*   **Terminal 2: Start the Agent Registry**
+    ```bash
+    python -m demo_agent_registry.app
+    ```
+
+*   **Terminal 3: Start the Weather Agent**
+    ```bash
+    python -m weather_agent
+    ```
+
+*   **Terminal 4: Start the Calendar Agent**
+    ```bash
+    python -m calendar_agent
+    ```
+
+*   **Terminal 5: Start the Horizon Agent**
+    ```bash
+    python -m horizon_agent --port 10008 --tenant-id tenant-abc
+    ```
+
+*   **Terminal 6: Start the Airbnb Agent**
+    ```bash
+    python -m airbnb_agent
+    ```
+
+*   **Terminal 7: Start the Host Agent (Your Concierge!)**
+    ```bash
+    python -m host_agent --port 8083 --tenant-id tenant-abc
+    ```
+
+### Step 4: Chat with Your Agent!
+
+Once all the services are running, you can start chatting with your personal trip-planning concierge.
+
+1.  Open your web browser and go to: **http://localhost:8083**
+2.  You'll see a chat window. Try asking it a question! For example, to test the secure agent, you could ask:
     `what is the status of order 123`
-3.  You will be presented with a link to authenticate. Click the link.
-4.  Log in to the mock IDP with username `john.doe` and password `password123`.
-5.  Grant consent. You will be redirected back to the Gradio UI.
-6.  After authenticating, signal the agent to continue by sending a message like "done" or re-submitting your original request. The agent will then use its stored credentials to complete the task.
+3.  The agent will give you a link to log in. Click the link and use the following credentials:
+    *   **Username:** `john.doe`
+    *   **Password:** `password123`
+4.  After you grant consent, you'll be redirected back to the chat. Just type "done" to let the agent know you're finished, and it will complete your request!
 
-## Key Development Learnings
-
-This project revealed several critical, non-obvious details about the A2A protocol and the ADK framework:
-
-1.  **A2A Task Delegation Lifecycle**: To correctly create a task on a remote agent, the client **MUST** send a `SendMessageRequest` *without* a `taskId`. The remote agent is responsible for creating the task and returning a `Task` object containing the new `remote_task_id`. The client must then capture this ID and associate it with its own local task record to maintain a link between the parent and child tasks.
-
-2.  **A2AClient Authentication**: The `a2a.client.A2AClient` does not handle auth tokens directly on a per-request basis. To make an authenticated call, a new, temporary `httpx.AsyncClient` must be created with the `Authorization` token in its `headers`. This temporary client is then used to create a new, single-use `A2AClient` for the authenticated request.
-
-3.  **Accessing Request Headers**: The A2A server framework does not expose request headers in the most intuitive location. They are not in `context.headers` or `context.call_context.headers`. Instead, they are located within the `ServerCallContext` object at `context.call_context.state['headers']`, and all header keys are lowercased (e.g., `authorization`).
+We hope you enjoy exploring the world of multi-agent AI!

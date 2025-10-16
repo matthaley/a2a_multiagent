@@ -38,18 +38,18 @@ app.secret_key = os.urandom(24)
 
 # Load the private key directly from the generated file
 try:
-    with open("private_key.pem", "r") as f:
+    with open("idp/idp_rsa", "r") as f:
         PRIVATE_KEY = f.read()
 except FileNotFoundError:
-    logging.error("private_key.pem not found. Please run generate_jwks.py first.")
+    logging.error("idp/idp_rsa not found. Please run generate_jwks.py first.")
     PRIVATE_KEY = None
 
 # Load JWKS
 try:
-    with open("jwks.json", "r") as f:
+    with open("idp/jwks.json", "r") as f:
         JWKS = json.load(f)
 except FileNotFoundError:
-    logging.error("jwks.json not found. The server will not be able to generate JWTs.")
+    logging.error("idp/jwks.json not found. The server will not be able to generate JWTs.")
     JWKS = None
 GENERATE_JWT = os.getenv("GENERATE_JWT", "true").lower() == "true"
 
