@@ -96,7 +96,7 @@ OPENID_CONFIG = {
 
 # A simple client registry
 CLIENT_REGISTRY = {
-    "airbnb_agent": {
+    "Airbnb Agent": {
         "client_secret": "airbnb_secret",
         "allowed_scopes": ["api:read", "api:write", "openid", "profile", "email"],
         "redirect_uri": ["http://localhost:8000/dev-ui/"],
@@ -104,7 +104,7 @@ CLIENT_REGISTRY = {
         "grant_types": ["authorization_code"],
         "client_name": "Airbnb Agent",
     },
-    "weather_agent": {
+    "Weather Agent": {
         "client_secret": "weather_secret",
         "allowed_scopes": ["api:read", "openid"],
         "redirect_uri": ["http://localhost:8083/callback"],
