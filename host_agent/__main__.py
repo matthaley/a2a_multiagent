@@ -26,7 +26,7 @@ USER_ID = "default_user"
 SESSION_ID = "default_session"
 
 DB_PATH = "host_agent.db"
-SESSION_SERVICE = DatabaseSessionService(db_url=f"sqlite:///{DB_PATH}")
+SESSION_SERVICE = DatabaseSessionService(db_url=f"sqlite+aiosqlite:///{DB_PATH}")
 TASK_STORE = PersistentTaskStore(db_path=DB_PATH)
 GLOBAL_TENANT_ID = None
 
