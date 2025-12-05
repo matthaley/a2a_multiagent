@@ -353,7 +353,7 @@ class RoutingAgent:
         return None
 
     async def _refresh_access_token(
-        self, refresh_token: str, agent_name: str, client_secret: str
+        self, refresh_token: str, agent_name: str, client_secret: str, tool_context: ToolContext | None = None
     ) -> str | None:
         """
         Refreshes an expired access token using a refresh token.
@@ -362,6 +362,7 @@ class RoutingAgent:
             refresh_token: The refresh token from the session.
             agent_name: The name of the agent (client) for which to refresh the token.
             client_secret: The client secret for the agent.
+            tool_context: Optional tool context to update the session through the Runner's event system.
 
         Returns:
             The new access token, or None if refresh fails.
@@ -388,20 +389,27 @@ class RoutingAgent:
         new_access_token = token_data.get("access_token")
 
         # Update the session with the new token
-        session = await self.session_service.get_session(
-            app_name=self.app_name, user_id=self.user_id, session_id=self.session_id
-        )
-        from google.adk.events.event import Event
-        from google.adk.events.event_actions import EventActions
+        # If tool_context is provided, update through it so the Runner's session cache stays in sync
+        if tool_context and tool_context.actions:
+            # Update through the tool context's event actions so the Runner handles the update
+            tool_context.actions.state_delta["access_token"] = new_access_token
+            logging.info("Successfully refreshed and updated access token via tool context.")
+        else:
+            # Fallback: Update directly (this may cause session staleness warnings)
+            session = await self.session_service.get_session(
+                app_name=self.app_name, user_id=self.user_id, session_id=self.session_id
+            )
+            from google.adk.events.event import Event
+            from google.adk.events.event_actions import EventActions
 
-        auth_event = Event(
-            id=str(uuid.uuid4()),
-            invocation_id=str(uuid.uuid4()),
-            author="system",
-            actions=EventActions(state_delta={"access_token": new_access_token}),
-        )
-        await self.session_service.append_event(session, auth_event)
-        logging.info("Successfully refreshed and updated access token.")
+            auth_event = Event(
+                id=str(uuid.uuid4()),
+                invocation_id=str(uuid.uuid4()),
+                author="system",
+                actions=EventActions(state_delta={"access_token": new_access_token}),
+            )
+            await self.session_service.append_event(session, auth_event)
+            logging.info("Successfully refreshed and updated access token directly.")
         return new_access_token
 
     async def send_message(
@@ -501,7 +509,7 @@ class RoutingAgent:
                     return f"Error: Client secret not found for {agent_name}."
 
                 new_access_token = await self._refresh_access_token(
-                    refresh_token, agent_name, client_secret
+                    refresh_token, agent_name, client_secret, tool_context
                 )
                 if new_access_token:
                     access_token = new_access_token  # Update token for the retry

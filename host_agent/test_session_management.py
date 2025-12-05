@@ -17,7 +17,7 @@ class TestSessionManagement(unittest.IsolatedAsyncioTestCase):
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
         self.session_service = DatabaseSessionService(
-            db_url=f"sqlite:///{self.db_path}"
+            db_url=f"sqlite+aiosqlite:///{self.db_path}"
         )
 
 
