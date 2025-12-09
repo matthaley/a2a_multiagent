@@ -8,8 +8,8 @@ app = Flask(__name__)
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Construct the full path to agent_registry.json
-# It's now in the parent directory's 'host_agent' folder
-json_path = os.path.join(script_dir, '..', 'host_agent', 'agent_registry.json')
+# It's in the same directory as this script
+json_path = os.path.join(script_dir, 'agent_registry.json')
 
 # Load the agent registry from the JSON file
 with open(json_path, 'r') as f:

@@ -23,7 +23,6 @@ operations.
 
 import json
 import logging
-import os
 import uuid
 from urllib.parse import urlencode
 
@@ -48,6 +47,11 @@ from google.adk.agents.readonly_context import ReadonlyContext
 from google.adk.tools.tool_context import ToolContext
 from google.adk.sessions import DatabaseSessionService
 
+from .config import (
+    AGENT_REGISTRY_URL,
+    IDP_TOKEN_URL,
+    REDIRECT_URI,
+)
 from .persistent_task_store import PersistentTaskStore
 from .remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 
@@ -293,7 +297,7 @@ class RoutingAgent:
         if not auth_uri:
             return {"error": "Authorization URI not found in security details."}
 
-        redirect_uri = os.getenv("REDIRECT_URI", "http://localhost:8083/callback")
+        redirect_uri = REDIRECT_URI
         state_data = {"task_id": task_id}
         params = {
             "response_type": "code",
@@ -370,7 +374,7 @@ class RoutingAgent:
         logging.info(f"Attempting to refresh access token for {agent_name}")
         async with httpx.AsyncClient() as client:
             token_response = await client.post(
-                "http://localhost:5000/generate-token",
+                IDP_TOKEN_URL,
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": refresh_token,
@@ -556,11 +560,11 @@ async def get_initialized_routing_agent_async(
     async with httpx.AsyncClient() as client:
         params = {"tenant_id": tenant_id} if tenant_id else {}
         try:
-            response = await client.get("http://localhost:5001/agents", params=params)
+            response = await client.get(AGENT_REGISTRY_URL, params=params)
             response.raise_for_status()
             agent_cards_data = response.json()
         except (httpx.ConnectError, httpx.HTTPStatusError) as e:
-            logging.error(f"Could not connect to Agent Registry at http://localhost:5001. Please ensure it is running. Error: {e}")
+            logging.error(f"Could not connect to Agent Registry at {AGENT_REGISTRY_URL}. Please ensure it is running. Error: {e}")
             return None
 
     agent_cards = [ExtendedAgentCard.model_validate(card) for card in agent_cards_data]

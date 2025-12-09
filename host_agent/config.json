@@ -1,0 +1,15 @@
+{
+  "agent_registry": {
+    "base_url": "http://localhost:5001",
+    "url": "http://localhost:5001/agents"
+  },
+  "idp": {
+    "base_url": "http://localhost:5000",
+    "token_url": "http://localhost:5000/generate-token",
+    "authorize_url": "http://localhost:5000/authorize"
+  },
+  "host_agent": {
+    "redirect_uri": "http://localhost:8083/callback"
+  }
+}
+
