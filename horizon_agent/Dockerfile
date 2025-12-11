@@ -49,5 +49,5 @@ USER horizon
 # Entrypoint script to handle tenant-id requirement
 # The tenant-id must be provided via command line argument or environment variable
 ENTRYPOINT ["python", "-m", "horizon_agent"]
-CMD ["--host", "0.0.0.0", "--port", "8000", "--log-level", "info", "--tenant-id", "default-tenant"]
+CMD ["--host", "0.0.0.0", "--port", "10008", "--log-level", "info", "--tenant-id", "tenant-abc"]
 
