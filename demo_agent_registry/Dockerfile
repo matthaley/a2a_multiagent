@@ -49,4 +49,4 @@ USER agentregistry
 
 # Entrypoint script
 ENTRYPOINT ["python", "-m", "demo_agent_registry"]
-CMD ["--host", "0.0.0.0", "--port", "5001", "--log-level", "info"]
+CMD ["--host", "0.0.0.0", "--port", "5001", "--log-level", "info", "--registry-file", "/app/demo_agent_registry/agent_registry.json"]
