@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["airbnb_agent*", "host_agent*", "weather_agent*", "auth_lib*", "calendar_agent*", "horizon_agent*", "idp*"]
+include = ["airbnb_agent*", "host_agent*", "weather_agent*", "auth_lib*", "calendar_agent*", "horizon_agent*", "idp*", "demo_agent_registry*"]
 
 [tool.uv.sources]
 a2a-samples = { workspace = true }
