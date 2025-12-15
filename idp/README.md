@@ -10,3 +10,4 @@ docker push ${REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT_ID}/${REPOSITORY_NAM
 gcloud run services replace idp/service.yaml \
   --region=${REGION} \
   --project=${GOOGLE_CLOUD_PROJECT_ID}
+  --update-env-vars=GCP_PROJECT_NUMBER=${GOOGLE_CLOUD_PROJECT_NUMBER},GCP_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}

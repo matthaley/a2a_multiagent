@@ -10,3 +10,4 @@ docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY_NAME}/agent-regi
 gcloud run services replace demo_agent_registry/service.yaml \
   --region=${REGION} \
   --project=${PROJECT_ID}
+  --update-env-vars=GCP_PROJECT_NUMBER=${GOOGLE_CLOUD_PROJECT_NUMBER},GCP_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
