@@ -1,10 +1,8 @@
 from flask import Flask, jsonify, request
 import json
 import os
-# Removed: import argparse
+from dotenv import load_dotenv
 import logging
-
-# Removed: logging.basicConfig(level=logging.DEBUG)
 
 # Moved global declaration here
 agent_registry = []
@@ -25,6 +23,19 @@ def create_app(registry_file: str = None):
     # Load the agent registry from the JSON file
     with open(json_path, 'r') as f:
         agent_registry = json.load(f)
+
+    # Load environment variables from .env file
+    load_dotenv()
+    gcp_project_number = os.getenv("GOOGLE_CLOUD_PROJECT_NUMBER")
+
+    if gcp_project_number:
+        for agent in agent_registry:
+            if "url" in agent:
+                agent["url"] = agent["url"].replace("GCP_PROJECT_NUMBER_PLACEHOLDER", gcp_project_number)
+            if "security" in agent and "authorization_uri" in agent["security"]:
+                agent["security"]["authorization_uri"] = agent["security"]["authorization_uri"].replace("GCP_PROJECT_NUMBER_PLACEHOLDER", gcp_project_number)
+            if "security" in agent and "token_uri" in agent["security"]:
+                agent["security"]["token_uri"] = agent["security"]["token_uri"].replace("GCP_PROJECT_NUMBER_PLACEHOLDER", gcp_project_number)
 
     @app.route('/agents', methods=['GET'])
     def get_agents():

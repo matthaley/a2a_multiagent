@@ -121,11 +121,13 @@ docker push ${REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT_ID}/${REPOSITORY_NAM
 ```bash
 gcloud run services replace horizon_agent/service-tenant-abc.yaml \
   --region=${REGION} \
-  --project=${GOOGLE_CLOUD_PROJECT_ID}
+  --project=${GOOGLE_CLOUD_PROJECT_ID} \
+  --update-env-vars=GCP_PROJECT_NUMBER=${GOOGLE_CLOUD_PROJECT_NUMBER}
 
 gcloud run services replace horizon_agent/service-tenant-xyz.yaml \
   --region=${REGION} \
-  --project=${GOOGLE_CLOUD_PROJECT_ID}
+  --project=${GOOGLE_CLOUD_PROJECT_ID} \
+  --update-env-vars=GCP_PROJECT_NUMBER=${GOOGLE_CLOUD_PROJECT_NUMBER}
 ```
 
 3. **Update APP_URL after deployment:**
