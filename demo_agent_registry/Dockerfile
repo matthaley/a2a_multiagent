@@ -49,5 +49,6 @@ USER agentregistry
 
 # Entrypoint script
 # Port is read from PORT environment variable (set by Cloud Run)
+# Default to local registry file; Cloud Run service.yaml will override with cloud run resolved file
 ENTRYPOINT ["python", "-m", "demo_agent_registry"]
 CMD ["--host", "0.0.0.0", "--log-level", "info", "--registry-file", "/app/demo_agent_registry/agent_registry.json"]

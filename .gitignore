@@ -47,3 +47,6 @@ htmlcov/
 Thumbs.db
 # Test configuration files
 auth_lib/test_config.py
+
+# Generated files with real Cloud Run URLs
+demo_agent_registry/agent_registry_cloud_run_resolved.json

@@ -20,6 +20,7 @@ from a2a.types import Task, TaskState
 
 from . import routing_agent
 from .persistent_task_store import PersistentTaskStore
+from . import config
 
 APP_NAME = "routing_app"
 USER_ID = "default_user"
@@ -54,11 +55,11 @@ async def handle_callback(request: Request):
     # Exchange code for token
     async with httpx.AsyncClient() as client:
         token_response = await client.post(
-            "http://localhost:5000/generate-token",
+            config.IDP_TOKEN_URL,
             data={
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": "http://localhost:8083/callback",
+                "redirect_uri": config.REDIRECT_URI,
                 "client_id": "Horizon Agent - Tenant ABC",
                 "client_secret": "horizon_secret_abc",
             },
