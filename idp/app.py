@@ -26,8 +26,6 @@ from flask import Flask, jsonify, redirect, render_template, request, session
 from flask_cors import CORS
 import jwt
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 # Load environment variables from .env file
 load_dotenv()
@@ -547,7 +545,4 @@ def generate_token():
 
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-if __name__ == "__main__":
-    app.run(port=5000)
+    return "IDP Service is running. Available endpoints: /.well-known/openid-configuration, /jwks.json, /authorize, /generate-token"

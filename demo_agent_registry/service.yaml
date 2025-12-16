@@ -17,7 +17,9 @@ metadata:
   labels:
     cloud.googleapis.com/location: us-central1
   annotations:
-    run.googleapis.com/ingress: "internal-and-cloud-load-balancing"
+    # Ingress setting - must comply with organization policy
+    # Options: "all" (public), "internal" (VPC only), "internal-and-cloud-load-balancing"
+    run.googleapis.com/ingress: "all"
 spec:
   template:
     metadata:
@@ -29,12 +31,14 @@ spec:
       - image: us-central1-docker.pkg.dev/GCP_PROJECT_ID_PLACEHOLDER/horizon-integration-test/agent-registry:latest
         ports:
         - name: http1
-          containerPort: 5001
+          containerPort: 8080
         env:
         - name: APP_URL
           value: "https://horizon-integration-test--agent-registry-service-GCP_PROJECT_NUMBER_PLACEHOLDER.us-central1.run.app"
         - name: GOOGLE_GENAI_USE_VERTEXAI
           value: "TRUE"
+        # Note: Cloud Run automatically sets PORT env var (usually 8080)
+        # We read it in the Python code via os.environ.get("PORT", "5001")
         resources:
           limits:
             cpu: "2"
@@ -46,8 +50,6 @@ spec:
         args:
         - --host
         - "0.0.0.0"
-        - --port
-        - "5001"
         - --log-level
         - "info"
         - --registry-file

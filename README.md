@@ -106,12 +106,12 @@ To run the demo, you must start the mock IDP, the agent registry, and all agents
 
 **Terminal 1: Start the IDP**
 ```bash
-python -m idp.app
+python -m idp
 ```
 
 **Terminal 2: Start the Agent Registry**
 ```bash
-python -m demo_agent_registry.app
+python -m demo_agent_registry
 ```
 
 **Terminal 3: Start the Weather Agent**

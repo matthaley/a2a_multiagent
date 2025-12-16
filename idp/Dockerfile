@@ -37,15 +37,16 @@ RUN useradd -m -u 1000 idp && \
 ENV APP_URL=""
 ENV IDP_URL="http://localhost:5000"
 ENV HOST="0.0.0.0"
-ENV PORT=5000
+ENV PORT="5000"
 ENV LOG_LEVEL="info"
 
-# Expose the default port
-EXPOSE 5000
+# Expose the default port (Cloud Run will override PORT to 8080 when deployed)
+EXPOSE 8080
 
 # Switch to non-root user
 USER idp
 
 # Entrypoint script
+# Port is read from PORT environment variable (set by Cloud Run)
 ENTRYPOINT ["python", "-m", "idp"]
-CMD ["--host", "0.0.0.0", "--port", "5000", "--log-level", "info"]
+CMD ["--host", "0.0.0.0", "--log-level", "info"]

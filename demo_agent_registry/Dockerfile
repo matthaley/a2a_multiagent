@@ -38,15 +38,16 @@ RUN useradd -m -u 1000 agentregistry && \
 # Set default environment variables
 ENV APP_URL=""
 ENV HOST="0.0.0.0"
-ENV PORT=5001
+ENV PORT="5001"
 ENV LOG_LEVEL="info"
 
-# Expose the default port
-EXPOSE 5001
+# Expose the default port (Cloud Run will override PORT to 8080 when deployed)
+EXPOSE 8080
 
 # Switch to non-root user
 USER agentregistry
 
 # Entrypoint script
+# Port is read from PORT environment variable (set by Cloud Run)
 ENTRYPOINT ["python", "-m", "demo_agent_registry"]
-CMD ["--host", "0.0.0.0", "--port", "5001", "--log-level", "info", "--registry-file", "/app/demo_agent_registry/agent_registry.json"]
+CMD ["--host", "0.0.0.0", "--log-level", "info", "--registry-file", "/app/demo_agent_registry/agent_registry.json"]

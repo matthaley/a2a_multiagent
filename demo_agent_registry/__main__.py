@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         type=int,
-        default=5001,
+        default=int(os.environ.get("PORT", "5001")),
         help="Port to bind the Flask application to",
     )
     parser.add_argument(
