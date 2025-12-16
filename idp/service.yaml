@@ -27,26 +27,20 @@ spec:
       containerConcurrency: 80
       timeoutSeconds: 300
       # Service account for accessing GCP resources
-      serviceAccountName: $(GCP_SERVICE_ACCOUNT)@$(GCP_PROJECT_ID).iam.gserviceaccount.com
+      serviceAccountName: GCP_SERVICE_ACCOUNT_PLACEHOLDER
       containers:
       # Artifact Registry image path: REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY_NAME/IMAGE_NAME:TAG
       # Replace REPOSITORY_NAME with your Artifact Registry repository name
-      - image: us-central1-docker.pkg.dev/$(GCP_PROJECT_ID)/horizon-integration-test/idp:latest
+      - image: us-central1-docker.pkg.dev/GCP_PROJECT_ID_PLACEHOLDER/horizon-integration-test/idp:latest
         ports:
         - name: http1
           containerPort: 5000
         env:
-        - name: GCP_PROJECT_NUMBER # This environment variable must be set during Cloud Run deployment.
-          value: "" # Provide your actual GCP project number during deployment.
-        - name: GCP_PROJECT_ID # This environment variable must be set during Cloud Run deployment.
-          value: "" # Provide your actual GCP project ID during deployment.
-        - name: GCP_SERVICE_ACCOUNT # This environment variable must be set during Cloud Run deployment.
-          value: "" # Provide your actual GCP service account name during deployment.
         # Required: Public URL where the IDP is accessible
         # Update this to your Cloud Run service URL after deployment
         # After deployment, run: gcloud run services describe horizon-integration-test--idp-service --region=us-central1 --format="value(status.url)"
         - name: APP_URL
-          value: "https://horizon-integration-test--idp-service-$(GCP_PROJECT_NUMBER).us-central1.run.app"
+          value: "https://horizon-integration-test--idp-service-GCP_PROJECT_NUMBER_PLACEHOLDER.us-central1.run.app"
         # Optional: Google API Key (if not using Vertex AI)
         # Uncomment and set via Secret Manager for production
         # - name: GOOGLE_API_KEY

@@ -3,11 +3,11 @@
 export REGION=us-central1
 export REPOSITORY_NAME=horizon-integration-test
 
-docker build -f demo_agent_registry/Dockerfile -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY_NAME}/agent-registry:latest .
+docker build -f demo_agent_registry/Dockerfile -t ${REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT_ID}/${REPOSITORY_NAME}/agent-registry:latest .
 
-docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY_NAME}/agent-registry:latest
+docker push ${REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT_ID}/${REPOSITORY_NAME}/agent-registry:latest
 
-gcloud run services replace demo_agent_registry/service.yaml \
-  --region=${REGION} \
-  --project=${PROJECT_ID}
-  --update-env-vars=GCP_PROJECT_NUMBER=${GOOGLE_CLOUD_PROJECT_NUMBER},GCP_SERVICE_ACCOUNT=${GOOGLE_CLOUD_SERVICE_ACCOUNT}
+cat demo_agent_registy/service.yaml | \
+  sed "s/GCP_PROJECT_ID_PLACEHOLDER/${GOOGLE_CLOUD_PROJECT_ID}/g" | \
+  sed "s/GCP_SERVICE_ACCOUNT_PLACEHOLDER/${GOOGLE_CLOUD_SERVICE_ACCOUNT}/g" | \
+  gcloud run services replace --region=${REGION} --project=${GOOGLE_CLOUD_PROJECT_ID} -
