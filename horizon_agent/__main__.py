@@ -38,7 +38,7 @@ from .horizon_agent import root_agent
 load_dotenv()
 
 DEFAULT_HOST = "0.0.0.0"
-DEFAULT_PORT = 8000
+DEFAULT_PORT = int(os.environ.get("PORT", "8080"))
 DEFAULT_LOG_LEVEL = "info"
 
 

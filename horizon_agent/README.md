@@ -126,35 +126,39 @@ cat horizon_agent/service-tenant-abc.yaml | \
   sed "s/GCP_SERVICE_ACCOUNT_PLACEHOLDER/${GOOGLE_CLOUD_SERVICE_ACCOUNT}/g" | \
   gcloud run services replace --region=${REGION} --project=${GOOGLE_CLOUD_PROJECT_ID} -
 
+# (Optional) Allow unauthenticated access
+gcloud run services add-iam-policy-binding horizon-integration-test--horizon-agent-tenant-abc \
+  --region=${REGION} \
+  --member="allUsers" \
+  --role="roles/run.invoker"
+
 # Deploy Tenant XYZ service
 cat horizon_agent/service-tenant-xyz.yaml | \
   sed "s/GCP_PROJECT_ID_PLACEHOLDER/${GOOGLE_CLOUD_PROJECT_ID}/g" | \
   sed "s/GCP_PROJECT_NUMBER_PLACEHOLDER/${GOOGLE_CLOUD_PROJECT_NUMBER}/g" | \
   sed "s/GCP_SERVICE_ACCOUNT_PLACEHOLDER/${GOOGLE_CLOUD_SERVICE_ACCOUNT}/g" | \
   gcloud run services replace --region=${REGION} --project=${GOOGLE_CLOUD_PROJECT_ID} -
+
+gcloud run services add-iam-policy-binding horizon-integration-test--horizon-agent-tenant-xyz \
+  --region=${REGION} \
+  --member="allUsers" \
+  --role="roles/run.invoker"
 ```
-
-3. **Update APP_URL after deployment:**
-   After the first deployment, Cloud Run will provide a service URL. Update the `APP_URL` environment variable in the service.yaml and redeploy, or update it via the Cloud Console.
-
-
-### Configuration Options
-
-The `service.yaml` file includes:
-- **Autoscaling**: Min 0 instances (scale to zero), max 10 instances
-- **Resources**: 2 CPU cores, 2Gi memory
-- **Timeout**: 300 seconds (5 minutes)
-- **Concurrency**: 80 requests per instance
-- **Port**: 8080 (Cloud Run default)
-
-Adjust these values based on your workload requirements.
 
 ### Testing deployments
 
 You can test local and deployed app with,
 
 ```bash
+# local testing
 curl http://0.0.0.0:10008/.well-known/agent-card.json
 
 curl -H "Authorization: Bearer $(gcloud auth print-access-token)" "https://horizon-integration-test--horizon-agent-tenant-abc-${GOOGLE_CLOUD_PROJECT_NUMBER}.us-central1.run.app/.well-known/agent-card.json"
+
+# impersonate service account method
+TOKEN=$(gcloud auth print-access-token --impersonate-service-account=${GOOGLE_CLOUD_SERVICE_ACCOUNT})
+curl -H "Authorization: Bearer $TOKEN" "https://horizon-integration-test--horizon-agent-tenant-abc-${GOOGLE_CLOUD_PROJECT_NUMBER}.us-central1.run.app/.well-known/agent-card.json"
+
+# unauthenticated (for testing only)
+curl "https://horizon-integration-test--horizon-agent-tenant-abc-${GOOGLE_CLOUD_PROJECT_NUMBER}.us-central1.run.app/.well-known/agent-card.json"
 ```

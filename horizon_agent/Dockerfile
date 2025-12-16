@@ -37,17 +37,18 @@ RUN useradd -m -u 1000 horizon && \
 ENV APP_URL=""
 ENV IDP_URL="http://localhost:5000"
 ENV HOST="0.0.0.0"
-ENV PORT=8000
+ENV PORT="8080"
 ENV LOG_LEVEL="info"
 
-# Expose the default port
-EXPOSE 8000
+# Expose the default port (Cloud Run will override PORT to 8080)
+EXPOSE 8080
 
 # Switch to non-root user
 USER horizon
 
 # Entrypoint script to handle tenant-id requirement
-# The tenant-id must be provided via command line argument or environment variable
+# The tenant-id must be provided via command line argument
+# Port is read from PORT environment variable (set by Cloud Run)
 ENTRYPOINT ["python", "-m", "horizon_agent"]
-CMD ["--host", "0.0.0.0", "--port", "10008", "--log-level", "info", "--tenant-id", "tenant-abc"]
+CMD ["--host", "0.0.0.0", "--log-level", "info", "--tenant-id", "tenant-abc"]
 

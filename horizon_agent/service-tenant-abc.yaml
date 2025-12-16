@@ -18,8 +18,8 @@ metadata:
     cloud.googleapis.com/location: us-central1
   annotations:
     # Ingress setting - must comply with organization policy
-    # Options: "all" (default, may be blocked), "internal", "internal-and-cloud-load-balancing"
-    run.googleapis.com/ingress: "internal-and-cloud-load-balancing"
+    # Options: "all" (public), "internal" (VPC only), "internal-and-cloud-load-balancing"
+    run.googleapis.com/ingress: "all"
 spec:
   template:
     metadata:
@@ -34,7 +34,7 @@ spec:
       - image: us-central1-docker.pkg.dev/GCP_PROJECT_ID_PLACEHOLDER/horizon-integration-test/horizon-agent:latest
         ports:
         - name: http1
-          containerPort: 10008
+          containerPort: 8080
         env:
         - name: TENANT_ID
           value: "tenant-abc"
@@ -53,7 +53,7 @@ spec:
         - name: GOOGLE_GENAI_USE_VERTEXAI
           value: "TRUE"
         # Note: Cloud Run automatically sets PORT env var (usually 8080)
-        # We use it in the args below
+        # We read it in the Python code via os.environ.get("PORT", "8080")
         resources:
           limits:
             cpu: "2"
@@ -65,12 +65,10 @@ spec:
         args:
         - --host
         - "0.0.0.0"
-        - --port
-        - "10008"
         - --log-level
         - "info"
         - --tenant-id
-        - $(TENANT_ID)
+        - "tenant-abc"
       # Health check is handled by Cloud Run's readiness probe
       # Cloud Run will automatically check the service endpoint
 
