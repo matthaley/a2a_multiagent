@@ -33,7 +33,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
 from .adk_agent_executor import HorizonAgentExecutor
-from .horizon_agent import root_agent
+from .horizon_agent import create_root_agent
 
 load_dotenv()
 
@@ -99,6 +99,9 @@ def main():
         securitySchemes={"oauth2": oauth_scheme},
     )
 
+    # Create the agent with tenant-specific context
+    root_agent = create_root_agent(args.tenant_id)
+    
     runner = Runner(
         app_name=agent_card.name,
         agent=root_agent,

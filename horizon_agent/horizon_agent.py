@@ -12,26 +12,41 @@
 
 from google.adk import Agent
 
-async def get_order_status(order_id: str) -> str:
-  """Gets the status of a specific order.
 
-  Args:
-    order_id: The ID of the order to check.
+def create_root_agent(tenant_id: str) -> Agent:
+    """Creates the horizon agent with tenant-specific context.
+    
+    Args:
+        tenant_id: The tenant ID for this agent instance.
+        
+    Returns:
+        An Agent configured for the specified tenant.
+    """
+    
+    async def get_order_status(order_id: str) -> str:
+        """Gets the status of a specific order.
 
-  Returns:
-    A string indicating the order status.
-  """
-  # In a real application, this would query a database or an order management system.
-  # For this example, we'll return a mock status.
-  return f"The status of order {order_id} is: Shipped"
+        Args:
+            order_id: The ID of the order to check.
 
+        Returns:
+            A string indicating the order status.
+        """
+        # In a real application, this would query a database or an order management system
+        # filtered by tenant_id. For this example, we'll return a mock status.
+        return f"The status of order {order_id} is: Shipped"
 
-root_agent = Agent(
-    model='gemini-2.5-flash',
-    name='horizon_agent',
-    description='Agent that can check order status for the Horizon tenant.',
-    instruction="You are an agent that can check the status of orders. Use the get_order_status tool.",
-    tools=[
-        get_order_status,
-    ],
-)
+    return Agent(
+        model='gemini-2.5-flash',
+        name='horizon_agent',
+        description=f'Agent that can check order status for tenant {tenant_id}.',
+        instruction=(
+            f"You are an agent for tenant '{tenant_id}' that can check the status of orders. "
+            "Use the get_order_status tool to retrieve order information. "
+            f"Always structure your response in this format: '[{tenant_id}] [status message]' "
+            "to clearly indicate which tenant the information is for."
+        ),
+        tools=[
+            get_order_status,
+        ],
+    )
