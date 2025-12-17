@@ -41,8 +41,6 @@ def create_root_agent(tenant_id: str) -> Agent:
         name='horizon_agent',
         description=f'Agent that can check order status for tenant {tenant_id}.',
         instruction=(
-            f"You are an agent for tenant '{tenant_id}' that can check the status of orders. "
-            "Use the get_order_status tool to retrieve order information. "
             f"Always structure your response in this format: '[{tenant_id}] [status message]' "
             "to clearly indicate which tenant the information is for."
         ),
