@@ -504,6 +504,7 @@ class RoutingAgent:
                 # In a real application, this should be handled more securely.
                 client_secrets = {
                     "Horizon Agent - Tenant ABC": "horizon_secret_abc",
+                    "Horizon Agent - Tenant XYZ": "horizon_secret_xyz",
                     "Weather Agent": "weather_secret",
                     "Calendar Agent": "calendar_secret",
                     "Airbnb Agent": "airbnb_secret",

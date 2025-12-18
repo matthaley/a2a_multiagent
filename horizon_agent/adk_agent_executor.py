@@ -234,9 +234,7 @@ class HorizonAgentExecutor(AgentExecutor):
             raise Exception("Missing or invalid Authorization header.")
 
         token = auth_header.split(" ")[1]
-        # Validate token signature and expiration, but don't require tenant_id match
-        # The routing agent may use a user token to call any tenant agent
-        is_valid, message = is_token_valid(token, required_tenant_id=None)
+        is_valid, message = is_token_valid(token)
 
         if not is_valid:
             raise Exception(f"Invalid token: {message}")

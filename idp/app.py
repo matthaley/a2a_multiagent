@@ -118,6 +118,14 @@ CLIENT_REGISTRY = {
         "grant_types": ["authorization_code"],
         "client_name": "Horizon Agent - Tenant ABC",
     },
+    "Horizon Agent - Tenant XYZ": {
+        "client_secret": "horizon_secret_xyz",
+        "allowed_scopes": ["api:read", "openid", "profile", "email"],
+        "redirect_uri": ["http://localhost:8083/callback"],
+        "response_types": ["code"],
+        "grant_types": ["authorization_code"],
+        "client_name": "Horizon Agent - Tenant XYZ",
+    },
     "Calendar Agent": {
         "client_secret": "calendar_secret",
         "allowed_scopes": ["api:read", "openid", "profile", "email"],
