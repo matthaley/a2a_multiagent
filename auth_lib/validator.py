@@ -26,9 +26,9 @@ def get_oidc_config():
     global oidc_config
     if oidc_config is None:
         try:
-            oidc_config_url = os.environ.get(
-                "OIDC_CONFIG_URL", "http://localhost:5000/.well-known/openid-configuration"
-            )
+            # Get IDP base URL and construct OIDC config URL
+            idp_base_url = os.environ.get("IDP_URL", "http://localhost:5000")
+            oidc_config_url = f"{idp_base_url}/.well-known/openid-configuration"
             response = requests.get(oidc_config_url)
             response.raise_for_status()
             oidc_config = response.json()

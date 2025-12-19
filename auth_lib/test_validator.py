@@ -76,7 +76,7 @@ class TestTokenValidator(unittest.TestCase):
     @patch("auth_lib.validator.requests.get")
     @patch.dict(
         os.environ,
-        {"OIDC_CONFIG_URL": "http://mock.idp/.well-known/openid-configuration"},
+        {"IDP_URL": "http://mock.idp"},
     )
     def test_valid_token_with_tenant_id(self, mock_get):
         """Test a valid token with a matching tenant ID."""
@@ -94,7 +94,7 @@ class TestTokenValidator(unittest.TestCase):
     @patch("auth_lib.validator.requests.get")
     @patch.dict(
         os.environ,
-        {"OIDC_CONFIG_URL": "http://mock.idp/.well-known/openid-configuration"},
+        {"IDP_URL": "http://mock.idp"},
     )
     def test_valid_token_no_tenant_id_check(self, mock_get):
         """Test a valid token when no tenant ID check is required."""
@@ -111,7 +111,7 @@ class TestTokenValidator(unittest.TestCase):
     @patch("auth_lib.validator.requests.get")
     @patch.dict(
         os.environ,
-        {"OIDC_CONFIG_URL": "http://mock.idp/.well-known/openid-configuration"},
+        {"IDP_URL": "http://mock.idp"},
     )
     def test_expired_token(self, mock_get):
         """Test that an expired token is rejected."""
@@ -130,7 +130,7 @@ class TestTokenValidator(unittest.TestCase):
     @patch("auth_lib.validator.requests.get")
     @patch.dict(
         os.environ,
-        {"OIDC_CONFIG_URL": "http://mock.idp/.well-known/openid-configuration"},
+        {"IDP_URL": "http://mock.idp"},
     )
     def test_mismatched_tenant_id(self, mock_get):
         """Test that a token with a mismatched tenant ID is rejected."""
@@ -149,7 +149,7 @@ class TestTokenValidator(unittest.TestCase):
     @patch("auth_lib.validator.requests.get")
     @patch.dict(
         os.environ,
-        {"OIDC_CONFIG_URL": "http://mock.idp/.well-known/openid-configuration"},
+        {"IDP_URL": "http://mock.idp"},
     )
     def test_missing_tenant_id_when_required(self, mock_get):
         """Test that a token without a tenant_id is rejected when one is required."""

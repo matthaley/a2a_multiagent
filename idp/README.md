@@ -1,8 +1,8 @@
 ```bash
 #export GOOGLE_CLOUD_PROJECT_ID= [get from .env]
 #export GOOGLE_CLOUD_PROJECT_NUMBER= [get from .env]
-export REGION=us-central1
-export REPOSITORY_NAME=horizon-integration-test
+#export REGION= [get from .env]
+#export REPOSITORY_NAME= [get from .env]
 
 docker build -f idp/Dockerfile -t ${REGION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT_ID}/${REPOSITORY_NAME}/idp:latest .
 

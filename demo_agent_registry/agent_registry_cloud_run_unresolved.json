@@ -47,7 +47,7 @@
     },
     {
       "name": "Weather Agent",
-      "url": "https://horizon-integration-test--weather-agent-service-GCP_PROJECT_NUMBER_PLACEHOLDER.us-central1.run.app",
+      "url": "https://horizon-integration-test--weather-agent-GCP_PROJECT_NUMBER_PLACEHOLDER.us-central1.run.app",
       "description": "Provides weather forecasts.",
       "version": "1.0",
       "capabilities": {"streaming": true, "push_notifications": true},

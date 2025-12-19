@@ -86,8 +86,8 @@ First, create an Artifact Registry repository if you haven't already:
 # Set your GCP project ID and region
 #export GOOGLE_CLOUD_PROJECT_ID= [get from .env]
 #export GOOGLE_CLOUD_PROJECT_NUMBER= [get from .env]
-export REGION=us-central1
-export REPOSITORY_NAME=horizon-integration-test
+#export REGION= [get from .env]
+#export REPOSITORY_NAME= [get from .env]
 
 # Create Artifact Registry repository (Docker format)
 gcloud artifacts repositories create ${REPOSITORY_NAME} \

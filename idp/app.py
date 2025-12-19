@@ -74,11 +74,14 @@ USER_REGISTRY = {
     },
 }
 
+# Get the base URL from environment variable, default to localhost for local development
+IDP_BASE_URL = os.getenv("APP_URL", "http://localhost:5000")
+
 OPENID_CONFIG = {
-    "issuer": "http://localhost:5000",
-    "authorization_endpoint": "http://localhost:5000/authorize",
-    "token_endpoint": "http://localhost:5000/generate-token",
-    "jwks_uri": "http://localhost:5000/jwks.json",
+    "issuer": IDP_BASE_URL,
+    "authorization_endpoint": f"{IDP_BASE_URL}/authorize",
+    "token_endpoint": f"{IDP_BASE_URL}/generate-token",
+    "jwks_uri": f"{IDP_BASE_URL}/jwks.json",
     "response_types_supported": ["code", "token", "id_token", "id_token token"],
     "grant_types_supported": [
         "client_credentials",
@@ -151,7 +154,7 @@ def generate_jwt(payload, key, alg="RS256"):
 def create_access_token(client_id, scopes, user_sub=None, tenant_id=None):
     if GENERATE_JWT:
         payload = {
-            "iss": "http://localhost:5000",
+            "iss": IDP_BASE_URL,
             "aud": "http://localhost:8081",
             "sub": user_sub if user_sub else client_id,
             "exp": (
@@ -171,7 +174,7 @@ def create_access_token(client_id, scopes, user_sub=None, tenant_id=None):
 def create_refresh_token(client_id, user_sub=None, tenant_id=None):
     if GENERATE_JWT:
         payload = {
-            "iss": "http://localhost:5000",
+            "iss": IDP_BASE_URL,
             "aud": "http://localhost:8081",
             "sub": user_sub if user_sub else client_id,
             "exp": (
@@ -193,7 +196,7 @@ def create_id_token(client_id, user_data, scopes, nonce=None):
         return None
 
     payload = {
-        "iss": "http://localhost:5000",
+        "iss": IDP_BASE_URL,
         "sub": user_data.get("sub"),
         "aud": client_id,
         "exp": (

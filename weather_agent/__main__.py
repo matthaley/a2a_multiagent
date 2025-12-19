@@ -26,7 +26,7 @@ from .weather_executor import WeatherExecutor
 load_dotenv()
 
 DEFAULT_HOST = "0.0.0.0"
-DEFAULT_PORT = 10001
+DEFAULT_PORT = int(os.environ.get("PORT", "10001"))
 DEFAULT_LOG_LEVEL = "info"
 
 
